@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { subirStreamCloudinary } from '@/lib/cloudinary';
-// [ROL 3] Descomentar estas 2 líneas al conectar persistencia en MongoDB:
-// import { connectDB } from '@/lib/mongodb';
-// import Archivo from '@/models/Archivo';
+import { subirStreamCloudinary, cloudinary } from '@/lib/cloudinary';
+import { connectDB } from '@/lib/mongodb';
+import Archivo from '@/models/Archivo';
 
 const TIPOS_MIME_PERMITIDOS = [
   'image/jpeg',
@@ -15,6 +14,57 @@ const TIPOS_MIME_PERMITIDOS = [
 ];
 
 const MAX_TAMANO_BYTES = 20 * 1024 * 1024; // 20 MB
+
+// [ROL 3] Filtro por categoría: ?tipo=imagen | video | pdf
+const FILTROS_TIPO = {
+  imagen: /^image\//,
+  video: /^video\//,
+  pdf: /^application\/pdf$/,
+};
+
+// [ROL 3] Escapa caracteres especiales para usar el texto del usuario en una RegExp
+function escaparRegex(texto) {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * [ROL 3] GET /api/archivos
+ * Query params opcionales:
+ *   - tipo:  imagen | video | pdf
+ *   - q:     búsqueda por título (sin distinguir mayúsculas)
+ *   - orden: desc (por defecto, más recientes primero) | asc
+ */
+export async function GET(request) {
+  try {
+    const { searchParams } = request.nextUrl;
+    const tipo = searchParams.get('tipo')?.toLowerCase();
+    const q = searchParams.get('q')?.trim();
+    const orden = searchParams.get('orden') === 'asc' ? 1 : -1;
+
+    if (tipo && !FILTROS_TIPO[tipo]) {
+      return NextResponse.json(
+        { error: 'Filtro "tipo" inválido. Usa: imagen, video o pdf.' },
+        { status: 400 }
+      );
+    }
+
+    const filtro = {};
+    if (tipo) filtro.tipoArchivo = FILTROS_TIPO[tipo];
+    if (q) filtro.titulo = { $regex: escaparRegex(q), $options: 'i' };
+
+    await connectDB();
+    const archivos = await Archivo.find(filtro).sort({ fechaSubida: orden });
+
+    // toJSON del modelo convierte _id → id y quita __v
+    return NextResponse.json(archivos);
+  } catch (error) {
+    console.error('Error en GET /api/archivos:', error);
+    return NextResponse.json(
+      { error: 'Error interno al consultar los archivos.' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request) {
   try {
@@ -63,12 +113,28 @@ export async function POST(request) {
       subidoPor: subidoPor || 'Anónimo',
     };
 
-    // [ROL 3] Reemplazar este return por el guardado en MongoDB:
-    // await connectDB();
-    // const registroGuardado = await Archivo.create(metadatos);
-    // return NextResponse.json(registroGuardado, { status: 201 });
-
-    return NextResponse.json(metadatos, { status: 201 });
+    // 6. [ROL 3] Persistencia en MongoDB con rollback:
+    //    si falla el guardado, se borra el archivo recién subido
+    //    para no dejar huérfanos en Cloudinary.
+    try {
+      await connectDB();
+      const registroGuardado = await Archivo.create(metadatos);
+      return NextResponse.json(registroGuardado, { status: 201 });
+    } catch (errorBD) {
+      console.error('Fallo al guardar en MongoDB, revirtiendo subida:', errorBD);
+      await cloudinary.uploader
+        .destroy(resultadoCloud.public_id, {
+          resource_type: resultadoCloud.resource_type,
+          invalidate: true,
+        })
+        .catch((errorRollback) =>
+          console.error('No se pudo revertir la subida en Cloudinary:', errorRollback)
+        );
+      return NextResponse.json(
+        { error: 'El archivo se subió pero no se pudo registrar. Se revirtió la subida.' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Error en POST /api/archivos:', error);
     return NextResponse.json(
