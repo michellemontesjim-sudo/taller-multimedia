@@ -13,27 +13,20 @@ const TIPOS_MIME_PERMITIDOS = [
   'application/pdf',
 ];
 
-const MAX_TAMANO_BYTES = 20 * 1024 * 1024; // 20 MB
+const MAX_TAMANO_BYTES = 10 * 1024 * 1024; // 10 MB
 
-// [ROL 3] Filtro por categoría: ?tipo=imagen | video | pdf
+//Filtro por categoría: ?tipo=imagen | video | pdf
 const FILTROS_TIPO = {
   imagen: /^image\//,
   video: /^video\//,
   pdf: /^application\/pdf$/,
 };
 
-// [ROL 3] Escapa caracteres especiales para usar el texto del usuario en una RegExp
+//Escapa caracteres especiales para usar el texto del usuario en una RegExp
 function escaparRegex(texto) {
   return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * [ROL 3] GET /api/archivos
- * Query params opcionales:
- *   - tipo:  imagen | video | pdf
- *   - q:     búsqueda por título (sin distinguir mayúsculas)
- *   - orden: desc (por defecto, más recientes primero) | asc
- */
 export async function GET(request) {
   try {
     const { searchParams } = request.nextUrl;

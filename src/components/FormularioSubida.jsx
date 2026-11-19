@@ -51,7 +51,7 @@ export default function FormularioSubida({ onSubido }) {
     if (!archivo || cargando) return;
 
     const formData = new FormData();
-    formData.append("archivo", archivo); // debe coincidir con el campo del Rol 2
+    formData.append("archivo", archivo);
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/archivos");

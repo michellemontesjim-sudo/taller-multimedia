@@ -15,7 +15,6 @@ function tipoRecursoCloudinary(tipoArchivo = '') {
 }
 
 /**
- * [ROL 3] DELETE /api/archivos/:id
  * Eliminación sincronizada: primero Cloudinary (por publicId), luego MongoDB.
  * Si la nube falla, el registro NO se borra (así no se pierde la referencia).
  */

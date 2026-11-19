@@ -1,6 +1,6 @@
-// [ROL 5] Funciones de ayuda para mostrar los metadatos en la galería.
+//Funciones de ayuda para mostrar los metadatos en la galería.
 
-// Convierte bytes a un texto legible: "512.0 KB" o "3.40 MB"
+// Convierte bytes a un texto legible: "512.0 KB""
 export function formatearPeso(bytes) {
   if (!Number.isFinite(bytes) || bytes < 0) return "—";
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -14,7 +14,7 @@ export function formatearFecha(valor) {
   return fecha
     .toLocaleString("es-CO", {
       day: "numeric",
-      month: "short", // el mes con letras evita confundir 10/11 con 11/10
+      month: "short",
       year: "numeric",
       hour: "numeric",
       minute: "2-digit",
