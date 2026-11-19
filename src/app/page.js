@@ -1,5 +1,5 @@
-import FormularioSubida from "@/components/FormularioSubida";
+import CloudMediaVault from "@/components/CloudMediaVault";
 
 export default function Home() {
-  return <FormularioSubida />;
+  return <CloudMediaVault />;
 }
